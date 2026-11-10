@@ -48,6 +48,10 @@ let audioChunks = [];
 let docLoaded = false;
 let activeTab = "pdf";
 
+const sessionId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : 'sess-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+
 // ── Pill toggle helpers ───────────────────────────────────
 function positionKnob() {
   const active = activeTab === "pdf" ? togglePdf : toggleText;
