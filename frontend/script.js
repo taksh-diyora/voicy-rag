@@ -113,21 +113,31 @@ async function handleFileUpload(file) {
   chunkBadge.textContent = `~${estimatedChunks} chunks`;
 
   if (estimatedChunks < 30)
-    uploadProgressText.textContent = "Processing… (~30s)";
+    uploadProgressText.textContent = "Processing… (~5s)";
   else if (estimatedChunks < 50)
-    uploadProgressText.textContent = "Processing… (~60s)";
+    uploadProgressText.textContent = "Processing… (~10s)";
   else if (estimatedChunks < 100)
-    uploadProgressText.textContent = "Processing… (~90s)";
+    uploadProgressText.textContent = "Processing… (~15s)";
   else if (estimatedChunks < 200)
-    uploadProgressText.textContent = "Processing… (~2 min)";
-  else uploadProgressText.textContent = "Processing… (~3 min)";
+    uploadProgressText.textContent = "Processing… (~20s)";
+  else uploadProgressText.textContent = "Processing… (~30s)";
 
   const formData = new FormData();
   formData.append("file", file);
 
   try {
-    const res = await fetch("/ingest", { method: "POST", body: formData });
-    const data = await res.json();
+    const res = await fetch("/ingest", {
+      method: "POST",
+      headers: { "X-Session-ID": sessionId },
+      body: formData
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseError) {
+      throw new Error(`Server error (Status ${res.status}). This is usually a file-size crash or timeout.`);
+    }
 
     if (!res.ok) {
       throw new Error(data.error || "Ingestion failed");
