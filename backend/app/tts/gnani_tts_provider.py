@@ -12,6 +12,12 @@ from app.config import (
 logger = logging.getLogger(__name__)
 
 
+AVAILABLE_VOICES = [
+    "Shivani", "Lakshmi", "Kalpana", "Chetana", "Vasudha", "Riyaa", "Tarika",
+    "Avinash", "Shubham", "Prakash", "Devansh", "Yashraj", "Harshad"
+]
+
+
 def _clean_for_speech(text: str) -> str:
     """Strip markdown symbols and formatting so speech synthesis sounds completely natural."""
     # Remove code blocks
@@ -30,9 +36,10 @@ def _clean_for_speech(text: str) -> str:
     return text
 
 
-async def text_to_speech(text: str) -> bytes:
+async def text_to_speech(text: str, voice: str | None = None) -> bytes:
     """
     Synthesize text to speech using Gnani AI Timbre v3.0 (https://api.vachana.ai/api/v1/tts/inference).
+    Allows user-specified voice with fallback to GNANI_TTS_VOICE or 'Shivani'.
     """
     if not text or not text.strip():
         return b""
@@ -46,6 +53,17 @@ async def text_to_speech(text: str) -> bytes:
     if not spoken_text:
         return b""
 
+    # Select voice
+    selected_voice = GNANI_TTS_VOICE or "Shivani"
+    if voice and voice.strip():
+        cleaned_voice = voice.strip()
+        # Case-insensitive match against available voices
+        matched = next((v for v in AVAILABLE_VOICES if v.lower() == cleaned_voice.lower()), None)
+        if matched:
+            selected_voice = matched
+        else:
+            logger.warning(f"Voice '{cleaned_voice}' not in available voices, falling back to '{selected_voice}'.")
+
     try:
         url = f"{GNANI_BASE_URL}/api/v1/tts/inference"
         headers = {
@@ -54,7 +72,7 @@ async def text_to_speech(text: str) -> bytes:
         }
         payload = {
             "text": spoken_text,
-            "voice": GNANI_TTS_VOICE or "Shivani",
+            "voice": selected_voice,
             "model": GNANI_TTS_MODEL or "timbre-v3.0",
             "language": GNANI_TTS_LANGUAGE or "en-IN",
             "speed": 1.0,

@@ -164,7 +164,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # ==============================================================================
 # LLM Models (Groq Primary, Google Gemini Fallback)
 # ==============================================================================
-GROQ_LLM_MODEL=llama-3.3-70b-versatile
+GROQ_LLM_MODEL=openai/gpt-oss-120b
 GEMINI_LLM_MODEL=gemini-2.5-flash
 
 # ==============================================================================
@@ -177,7 +177,6 @@ GNANI_STT_LANGUAGE_CODE=en-IN
 # Text-to-Speech (TTS) — Gnani AI Timbre
 # ==============================================================================
 GNANI_TTS_MODEL=timbre-v3.0
-GNANI_TTS_VOICE=Shivani
 GNANI_TTS_LANGUAGE=en-IN
 
 # ==============================================================================

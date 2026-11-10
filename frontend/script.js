@@ -10,10 +10,30 @@ const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 const audioPlayer = document.getElementById("audioPlayer");
 const ttsToggle = document.getElementById("ttsToggle");
+const voicePickerWrap = document.getElementById("voicePickerWrap");
+const voiceSelect = document.getElementById("voiceSelect");
 const conversationArea = document.getElementById("conversationArea");
 
-// Immediately stop audio if toggled off mid-speech
+function updateVoiceDropdownVisibility() {
+  if (voicePickerWrap) {
+    voicePickerWrap.style.display = ttsToggle.checked ? "flex" : "none";
+  }
+}
+
+// Restore saved voice preference
+if (voiceSelect) {
+  const savedVoice = localStorage.getItem("voicyrag_voice");
+  if (savedVoice) {
+    voiceSelect.value = savedVoice;
+  }
+  voiceSelect.addEventListener("change", () => {
+    localStorage.setItem("voicyrag_voice", voiceSelect.value);
+  });
+}
+
+// Immediately stop audio if toggled off mid-speech, and sync voice picker visibility
 ttsToggle.addEventListener("change", () => {
+  updateVoiceDropdownVisibility();
   if (!ttsToggle.checked && audioPlayer && !audioPlayer.paused) {
     audioPlayer.pause();
     audioPlayer.currentTime = 0;
@@ -292,12 +312,17 @@ function setStatus(state, text) {
   statusDot.className = "status-dot " + state;
   statusText.textContent = text;
 
+  const micMatIcon = document.getElementById("micMatIcon");
+  const waveformEl = document.getElementById("waveform");
+
   if (state === "recording") {
     recordBtn.classList.add("recording");
-    recordBtn.querySelector(".waveform").classList.add("active");
+    if (micMatIcon) micMatIcon.style.display = "none";
+    if (waveformEl) { waveformEl.classList.remove("hidden"); waveformEl.classList.add("active"); }
   } else {
     recordBtn.classList.remove("recording");
-    recordBtn.querySelector(".waveform").classList.remove("active");
+    if (micMatIcon) micMatIcon.style.display = "";
+    if (waveformEl) { waveformEl.classList.add("hidden"); waveformEl.classList.remove("active"); }
   }
 
   if (state !== "idle") {
@@ -402,10 +427,6 @@ function addBubble(role, text) {
   const wrap = document.createElement("div");
   wrap.className = "chat-bubble " + role;
 
-  const avatar = document.createElement("div");
-  avatar.className = "bubble-avatar";
-  avatar.textContent = role === "user" ? "You" : "AI";
-
   const body = document.createElement("div");
   body.className = "bubble-body";
 
@@ -423,7 +444,14 @@ function addBubble(role, text) {
 
   body.appendChild(bubble);
   body.appendChild(time);
-  wrap.appendChild(avatar);
+
+  if (role === "ai") {
+    const avatar = document.createElement("div");
+    avatar.className = "bubble-avatar";
+    avatar.textContent = "AI";
+    wrap.appendChild(avatar);
+  }
+
   wrap.appendChild(body);
   conversationArea.appendChild(wrap);
   conversationArea.scrollTop = conversationArea.scrollHeight;
@@ -528,13 +556,18 @@ chatForm.addEventListener("submit", async (e) => {
 
   try {
     const isTtsEnabled = ttsToggle.checked;
+    const selectedVoice = (voiceSelect && voiceSelect.value) ? voiceSelect.value : "Shivani";
     const res = await fetch("/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Session-ID": sessionId
       },
-      body: JSON.stringify({ message: msg, tts: isTtsEnabled }),
+      body: JSON.stringify({
+        message: msg,
+        tts: isTtsEnabled,
+        voice: selectedVoice
+      }),
     });
     const data = await res.json();
 
@@ -694,4 +727,5 @@ async function sendAudioToBackend() {
 (() => {
   setUploadState("idle");
   setStatus("idle", "Choose a data source to begin");
+  updateVoiceDropdownVisibility();
 })();
