@@ -4,8 +4,6 @@ import numpy as np
 
 from app.config import FAISS_INDEX_PATH, CHUNKS_PATH
 from app.embeddings import embed_text
-from app.improved_query.query_rewrite import rewrite_query
-from app.query_ranker.rerank import rerank
 
 # Lazy-loaded globals — populated on first call to retrieve()
 _index = None
@@ -27,12 +25,9 @@ def reset_index():
     _chunks = None
 
 
-def retrieve(query: str, k: int = 12):
+def retrieve(query: str, k: int = 5):
 
     _load_index()
-
-    # rewrite vague queries
-    query = rewrite_query(query)
 
     query_vector = np.array([embed_text(query)], dtype="float32")
 
@@ -50,8 +45,5 @@ def retrieve(query: str, k: int = 12):
                 "chunk": _chunks[i],
                 "score": float(scores[0][j])
             })
-
-    # semantic rerank
-    results = rerank(query, results)
 
     return results

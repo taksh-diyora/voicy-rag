@@ -7,7 +7,7 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config import FAISS_INDEX_PATH, CHUNKS_PATH
-from app.embeddings import embed_text
+from app.embeddings import embed_batch
 
 
 # ── Helpers ─────────────────────────────────────────
@@ -32,18 +32,10 @@ def _build_index(text: str):
     )
 
     chunks = splitter.split_text(text)
-
     print(f"      Created {len(chunks)} chunks")
 
-    embeddings = []
-
-    for i, chunk in enumerate(chunks):
-
-        embeddings.append(embed_text(chunk))
-
-        print(f"      Embedded {i+1}/{len(chunks)}", end="\r")
-
-    print()
+    print(f"      Embedding all {len(chunks)} chunks in one batch...")
+    embeddings = embed_batch(chunks)
 
     embeddings = np.array(embeddings).astype("float32")
 
