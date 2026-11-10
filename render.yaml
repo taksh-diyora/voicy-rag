@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: voicy-rag
+    env: python
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_LLM_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GEMINI_LLM_MODEL
+        value: gemini-2.5-flash
+      - key: GNANI_STT_MODEL
+        value: prisma-v3.0
+      - key: GNANI_STT_LANGUAGE_CODE
+        value: en-IN
+      - key: GNANI_TTS_MODEL
+        value: timbre-v3.0
+      - key: GNANI_TTS_VOICE
+        value: Shivani
+      - key: GNANI_TTS_LANGUAGE
+        value: en-IN
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: EMBEDDING_DIM
+        value: "384"
+      - key: GNANI_BASE_URL
+        value: https://api.vachana.ai
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GNANI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

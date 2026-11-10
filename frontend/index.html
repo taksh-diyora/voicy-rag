@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>VoicyRAG — AI Study &amp; Reading Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=8" />
+</head>
+
+<body>
+  <div class="app-wrapper">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <h1 class="brand-title">VoicyRAG</h1>
+        <span class="brand-tag">Study &amp; Research</span>
+      </div>
+      <div class="header-controls">
+        <label class="toggle-label" title="Toggle audio responses">
+          <input type="checkbox" id="ttsToggle" checked />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-text">Voice Mode</span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Document upload zone -->
+    <section class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".pdf" hidden />
+
+      <!-- PDF / Text pill toggle -->
+      <div class="source-toggle" id="ingestTabs">
+        <button class="source-opt active" id="togglePdf" data-tab="pdf">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          PDF Document
+        </button>
+        <button class="source-opt" id="toggleText" data-tab="text">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="17" y1="10" x2="3" y2="10" />
+            <line x1="21" y1="6" x2="3" y2="6" />
+            <line x1="21" y1="14" x2="3" y2="14" />
+            <line x1="13" y1="18" x2="3" y2="18" />
+          </svg>
+          Notes &amp; Drafts
+        </button>
+        <span class="source-knob" id="sourceKnob"></span>
+      </div>
+
+      <!-- idle state — PDF tab -->
+      <div class="upload-idle" id="uploadIdle">
+        <div class="upload-icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="18" x2="12" y2="12" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+          </svg>
+        </div>
+        <div class="upload-idle-text">
+          <span class="upload-title">Drop your textbook, paper, or manuscript PDF</span>
+          <span class="upload-sub">Indexed locally for instant voice Q&amp;A and concept learning</span>
+        </div>
+        <button class="upload-btn" id="uploadBtn">Choose PDF</button>
+      </div>
+
+      <!-- idle state — Text tab -->
+      <div class="upload-text-idle" id="uploadTextIdle" style="display: none">
+        <input type="text" id="textTitle" class="text-title-input" placeholder="Chapter or Notes Title (optional)"
+          maxlength="80" />
+        <textarea id="textContent" class="text-content-area"
+          placeholder="Paste your study notes, book chapter draft, lecture transcripts, or articles here…"
+          rows="5"></textarea>
+        <div class="text-char-row">
+          <span class="text-char-count" id="textCharCount">0 characters</span>
+          <button class="upload-btn" id="indexTextBtn">Index Content</button>
+        </div>
+      </div>
+
+      <!-- uploading / processing state -->
+      <div class="upload-progress" id="uploadProgress" style="display: none">
+        <div class="spinner"></div>
+        <div class="progress-info">
+          <span id="uploadProgressText">Indexing knowledge base…</span>
+          <span class="chunk-badge" id="chunkBadge"></span>
+        </div>
+      </div>
+
+      <!-- loaded state -->
+      <div class="upload-loaded" id="uploadLoaded" style="display: none">
+        <div class="doc-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        </div>
+        <div class="doc-info">
+          <span class="doc-name" id="docName">document.pdf</span>
+          <span class="doc-meta" id="docMeta"></span>
+        </div>
+        <button class="doc-replace-btn" id="replaceBtn" title="Upload a different document">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          </svg>
+          Switch Doc
+        </button>
+      </div>
+    </section>
+
+    <!-- Conversation area -->
+    <main class="conversation-area" id="conversationArea">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-sparkle">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L14.2 9.8L22 12L14.2 14.2L12 22L9.8 14.2L2 12L9.8 9.8L12 2Z" fill="currentColor" />
+          </svg>
+        </div>
+        <h2>What would you like to explore today?</h2>
+        <p>Upload a textbook, study notes, or manuscript draft to learn concepts, clarify doubts, and ask questions with
+          your voice.</p>
+      </div>
+    </main>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Ready</span>
+    </div>
+
+    <!-- Chat control -->
+    <footer class="chat-footer">
+      <form id="chatForm" class="chat-form">
+        <!-- STT Mic Button -->
+        <button type="button" class="side-mic-btn" id="recordBtn" aria-label="Hold to speak" title="Press to talk">
+          <svg class="mic-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
+          <div class="waveform hidden" id="waveform">
+            <span></span><span></span><span></span>
+          </div>
+        </button>
+
+        <input type="text" id="chatInput" class="chat-input"
+          placeholder="Ask anything about your study notes or book draft (or tap the mic)..." autocomplete="off"
+          disabled />
+
+        <button type="submit" class="send-btn" id="sendBtn" disabled aria-label="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        </button>
+      </form>
+    </footer>
+  </div>
+
+  <!-- Hidden audio player -->
+  <audio id="audioPlayer" style="display: none"></audio>
+
+  <!-- Markdown Parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="script.js?v=8"></script>
+</body>
+
+</html>
