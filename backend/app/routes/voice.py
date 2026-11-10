@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Header
 from fastapi.responses import Response
 from pydantic import BaseModel
 from urllib.parse import quote
@@ -10,18 +10,21 @@ from app.tts.gnani_tts_provider import text_to_speech
 
 router = APIRouter()
 
+
 class ChatRequest(BaseModel):
     message: str
     tts: bool = False
+
 
 def _safe_header(value: str) -> str:
     """Encode string for HTTP header-safe ASCII."""
     return quote(value.strip().replace("\n", " ").replace("\r", " "), safe=" .,!?-_()'\"")
 
+
 @router.post("/chat")
-async def chat_query(req: ChatRequest):
-    """Text-first RAG pipeline chat endpoint."""
-    answer = await generate_answer(req.message)
+async def chat_query(req: ChatRequest, x_session_id: str | None = Header(None)):
+    session_id = (x_session_id or "default").strip()
+    answer = await generate_answer(req.message, session_id)
     res = {"question": req.message, "answer": answer}
     if req.tts:
         audio_response = await text_to_speech(answer)
@@ -31,11 +34,12 @@ async def chat_query(req: ChatRequest):
             res["audio_mime"] = media_type
     return res
 
+
 @router.post("/voice")
-async def voice_query(audio: UploadFile = File(...)):
-    """Full voice RAG pipeline: STT -> RAG -> TTS -> Audio Response"""
+async def voice_query(audio: UploadFile = File(...), x_session_id: str | None = Header(None)):
+    session_id = (x_session_id or "default").strip()
     question = transcribe_audio(await audio.read())
-    answer = await generate_answer(question)
+    answer = await generate_answer(question, session_id)
     audio_response = await text_to_speech(answer)
     media_type = "audio/wav" if audio_response.startswith(b"RIFF") else "audio/mpeg"
 
@@ -48,8 +52,8 @@ async def voice_query(audio: UploadFile = File(...)):
         },
     )
 
+
 @router.post("/voice/text")
 async def voice_query_text(audio: UploadFile = File(...)):
     """Transcribes audio and returns the text (for chat flow injection)."""
     return {"question": transcribe_audio(await audio.read())}
-

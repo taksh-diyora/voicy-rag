@@ -1,18 +1,18 @@
 import asyncio
-import os
-from functools import wraps
-
-from fastapi import APIRouter, UploadFile, File
+import logging
+from fastapi import APIRouter, UploadFile, File, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.ingestion.ingest import ingest_pdf_bytes, ingest_text
-from app.config import FAISS_INDEX_PATH, CHUNKS_PATH
+from app.session_store import get_session
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-# Python 3.8 compatibility: asyncio.to_thread was added in 3.9
+
 async def run_in_thread(func, *args, **kwargs):
     """Run a blocking function in a thread pool executor."""
     loop = asyncio.get_event_loop()
@@ -20,27 +20,37 @@ async def run_in_thread(func, *args, **kwargs):
 
 
 @router.post("/ingest")
-async def ingest_document(file: UploadFile = File(...)):
-    """
-    Accept a PDF upload, run the full ingestion pipeline, and persist
-    faiss.index + chunks.pkl so voice queries can use it immediately.
-    """
+async def ingest_document(
+    file: UploadFile = File(...),
+    x_session_id: str | None = Header(None)
+):
+    session_id = (x_session_id or "default").strip()
+
     if not file.filename.lower().endswith(".pdf"):
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Only PDF files are supported."},
-        )
+        return JSONResponse(status_code=400, content={"error": "Only PDF files are supported."})
 
-    pdf_bytes = await file.read()
+    try:
+        pdf_bytes = await file.read()
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": f"Failed to read file: {e}"})
+
     if len(pdf_bytes) == 0:
+        return JSONResponse(status_code=400, content={"error": "Uploaded file is empty."})
+    
+    if len(pdf_bytes) > MAX_FILE_SIZE:
         return JSONResponse(
             status_code=400,
-            content={"error": "Uploaded file is empty."},
+            content={"error": "File exceeds 10MB limit. Please compress your PDF to prevent memory issues."}
         )
 
-    # Run blocking pipeline in a thread so the event loop stays free
-    result = await run_in_thread(ingest_pdf_bytes, pdf_bytes, file.filename)
-    return {"status": "success", **result}
+    try:
+        result = await run_in_thread(ingest_pdf_bytes, pdf_bytes, session_id, file.filename)
+        return {"status": "success", **result}
+    except ValueError as ve:
+        return JSONResponse(status_code=400, content={"error": str(ve)})
+    except Exception as e:
+        logger.exception("Unexpected error during PDF ingestion")
+        return JSONResponse(status_code=500, content={"error": f"Ingestion error: {str(e)}"})
 
 
 class TextIngestRequest(BaseModel):
@@ -49,29 +59,28 @@ class TextIngestRequest(BaseModel):
 
 
 @router.post("/ingest/text")
-async def ingest_text_document(body: TextIngestRequest):
-    """
-    Accept raw plain text, run the full ingestion pipeline, and persist
-    faiss.index + chunks.pkl so voice queries can use it immediately.
-    """
+async def ingest_text_document(
+    body: TextIngestRequest,
+    x_session_id: str | None = Header(None)
+):
+    session_id = (x_session_id or "default").strip()
+
     if not body.text.strip():
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Text content is empty."},
-        )
+        return JSONResponse(status_code=400, content={"error": "Text content is empty."})
 
-    if len(body.text.strip()) < 50:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Text is too short to index (minimum 50 characters)."},
-        )
-
-    result = await run_in_thread(ingest_text, body.text, body.title)
-    return {"status": "success", **result}
+    try:
+        result = await run_in_thread(ingest_text, body.text, session_id, body.title)
+        return {"status": "success", **result}
+    except ValueError as ve:
+        return JSONResponse(status_code=400, content={"error": str(ve)})
+    except Exception as e:
+        logger.exception("Unexpected error during text ingestion")
+        return JSONResponse(status_code=500, content={"error": f"Ingestion error: {str(e)}"})
 
 
 @router.get("/api/document")
-async def document_status():
-    """Return whether a document index is currently loaded on disk."""
-    loaded = os.path.exists(FAISS_INDEX_PATH) and os.path.exists(CHUNKS_PATH)
+async def document_status(x_session_id: str | None = Header(None)):
+    """Return whether a document index is currently loaded in RAM for this session."""
+    session_id = (x_session_id or "default").strip()
+    loaded = bool(get_session(session_id))
     return {"loaded": loaded}

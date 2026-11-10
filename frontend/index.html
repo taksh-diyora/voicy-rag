@@ -10,7 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
 </head>
 
 <body>
@@ -72,7 +72,7 @@
           <span class="upload-title">Drop your textbook, paper, or manuscript PDF</span>
           <span class="upload-sub">Indexed locally for instant voice Q&amp;A and concept learning</span>
         </div>
-        <button class="upload-btn" id="uploadBtn">Choose PDF</button>
+        <button type="button" class="upload-btn" id="uploadBtn">Choose PDF</button>
       </div>
 
       <!-- idle state — Text tab -->
@@ -132,6 +132,36 @@
         <h2>What would you like to explore today?</h2>
         <p>Upload a textbook, study notes, or manuscript draft to learn concepts, clarify doubts, and ask questions with
           your voice.</p>
+        <div class="suggestion-grid">
+          <button type="button" class="suggestion-card" data-prompt="Provide a clear, high-level summary of the main concepts in this document.">
+            <span class="card-icon">📚</span>
+            <div class="card-text">
+              <span class="card-title">Summarize Core Ideas</span>
+              <span class="card-sub">Get an executive overview of the material</span>
+            </div>
+          </button>
+          <button type="button" class="suggestion-card" data-prompt="Explain the most complex concept in this document in simple, easy-to-understand terms.">
+            <span class="card-icon">💡</span>
+            <div class="card-text">
+              <span class="card-title">Explain Simply</span>
+              <span class="card-sub">Break down difficult topics step-by-step</span>
+            </div>
+          </button>
+          <button type="button" class="suggestion-card" data-prompt="Create a 3-question conceptual quiz with answers based on this text.">
+            <span class="card-icon">📝</span>
+            <div class="card-text">
+              <span class="card-title">Self-Study Quiz</span>
+              <span class="card-sub">Test your understanding with practice questions</span>
+            </div>
+          </button>
+          <button type="button" class="suggestion-card" data-prompt="Analyze the tone, flow, and key arguments in this chapter or draft.">
+            <span class="card-icon">✍️</span>
+            <div class="card-text">
+              <span class="card-title">Draft & Manuscript Review</span>
+              <span class="card-sub">Critique flow, pacing, and core arguments</span>
+            </div>
+          </button>
+        </div>
       </div>
     </main>
 
@@ -178,7 +208,7 @@
 
   <!-- Markdown Parser -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="script.js?v=8"></script>
+  <script src="script.js?v=9"></script>
 </body>
 
 </html>

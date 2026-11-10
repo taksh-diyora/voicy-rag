@@ -1,3 +1,8 @@
+// ── Session identifier (declared at absolute top) ─────────
+const sessionId = (typeof crypto !== "undefined" && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : "sess-" + Date.now().toString(36) + Math.random().toString(36).substring(2);
+
 // ── DOM refs ──────────────────────────────────────────────
 const recordBtn = document.getElementById("recordBtn");
 const chatForm = document.getElementById("chatForm");
@@ -48,10 +53,6 @@ let audioChunks = [];
 let docLoaded = false;
 let activeTab = "pdf";
 
-const sessionId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-  ? crypto.randomUUID()
-  : 'sess-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
-
 // ── Pill toggle helpers ───────────────────────────────────
 function positionKnob() {
   const active = activeTab === "pdf" ? togglePdf : toggleText;
@@ -99,9 +100,9 @@ function setUploadState(state, info = {}) {
   chatInput.disabled = !docLoaded;
   sendBtn.disabled = !docLoaded;
   if (docLoaded) {
-    chatInput.placeholder = "Type a message (or use the mic)...";
+    chatInput.placeholder = "Ask anything about your study notes or book draft (or tap the mic)...";
   } else {
-    chatInput.placeholder = "Upload a PDF or paste text to chat...";
+    chatInput.placeholder = "Upload a PDF or index notes to begin...";
   }
 }
 
@@ -144,7 +145,8 @@ async function handleFileUpload(file) {
     }
 
     if (!res.ok) {
-      throw new Error(data.error || "Ingestion failed");
+      const errorMsg = data?.error || (typeof data?.detail === "string" ? data.detail : (data?.detail && data.detail[0]?.msg) || "Ingestion failed");
+      throw new Error(errorMsg);
     }
 
     chunkBadge.textContent = `${data.chunks} chunks`;
@@ -158,15 +160,25 @@ async function handleFileUpload(file) {
 }
 
 // Click to pick file
-uploadBtn.onclick = () => fileInput.click();
-replaceBtn.onclick = () => {
+uploadBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  fileInput.click();
+});
+uploadIdle.addEventListener("click", (e) => {
+  if (e.target !== uploadBtn && activeTab === "pdf") {
+    fileInput.click();
+  }
+});
+replaceBtn.addEventListener("click", () => {
   setUploadState("idle");
   if (activeTab === "pdf") fileInput.click();
-};
-fileInput.onchange = () => {
-  if (fileInput.files[0]) handleFileUpload(fileInput.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files && fileInput.files[0]) {
+    handleFileUpload(fileInput.files[0]);
+  }
   fileInput.value = ""; // reset so same file can be re-uploaded
-};
+});
 
 // ── Toggle switching ──────────────────────────────────────
 function switchTab(tab) {
@@ -214,11 +226,25 @@ async function handleTextIngest() {
   try {
     const res = await fetch("/ingest/text", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-ID": sessionId
+      },
       body: JSON.stringify({ text: content, title }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Ingestion failed");
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseError) {
+      throw new Error(`Server error (Status ${res.status}).`);
+    }
+
+    if (!res.ok) {
+      const errorMsg = data?.error || (typeof data?.detail === "string" ? data.detail : (data?.detail && data.detail[0]?.msg) || "Ingestion failed");
+      throw new Error(errorMsg);
+    }
+
     chunkBadge.textContent = `${data.chunks} chunks`;
     setUploadState("loaded", data);
     showToast("✓ Text indexed successfully!", "success");
@@ -230,6 +256,21 @@ async function handleTextIngest() {
 }
 
 indexTextBtn.onclick = handleTextIngest;
+
+// ── Suggestion cards (Student & Reader Quick Prompts) ──────
+document.querySelectorAll(".suggestion-card").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const prompt = btn.dataset.prompt;
+    if (!prompt) return;
+    if (!docLoaded) {
+      showToast("Please upload a PDF or index notes first.");
+      return;
+    }
+    chatInput.value = prompt;
+    sendBtn.disabled = false;
+    chatForm.dispatchEvent(new Event("submit"));
+  });
+});
 
 // Drag & drop
 uploadZone.addEventListener("dragover", (e) => {
@@ -489,7 +530,10 @@ chatForm.addEventListener("submit", async (e) => {
     const isTtsEnabled = ttsToggle.checked;
     const res = await fetch("/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-ID": sessionId
+      },
       body: JSON.stringify({ message: msg, tts: isTtsEnabled }),
     });
     const data = await res.json();
@@ -617,7 +661,11 @@ async function sendAudioToBackend() {
     const formData = new FormData();
     formData.append("audio", wavBlob, "recording.wav");
 
-    const res = await fetch("/voice/text", { method: "POST", body: formData });
+    const res = await fetch("/voice/text", {
+      method: "POST",
+      headers: { "X-Session-ID": sessionId },
+      body: formData
+    });
     if (!res.ok) throw new Error("Transcribe failed: " + res.status);
     const data = await res.json();
 

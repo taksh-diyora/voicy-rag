@@ -15,7 +15,7 @@ Pipeline: **STT (Gnani AI Prisma v3.0) → Local FastEmbed + FAISS RAG → Groq 
 | **LLM Reasoning** | **Groq** (`openai/gpt-oss-120b`) | Primary fast LLM (with Google Gemini fallback) |
 | **Embeddings** | FastEmbed `all-MiniLM-L6-v2` (dim 384, ONNX) | Local, fast, low memory footprint |
 | **Vector Store** | FAISS `IndexFlatIP` (L2 normalized) | Local in-memory index |
-| **Text-to-Speech (TTS)** | **Gnani AI Timbre v3.0** (Voice: `Nalini`) | Natural neural speech synthesis |
+| **Text-to-Speech (TTS)** | **Gnani AI Timbre v3.0** (Voice: `Shivani`) | Natural neural speech synthesis |
 | **Frontend** | Vanilla HTML / CSS / JS (dark theme) | Browser UI with mic recording and voice playback |
 
 ---
@@ -34,7 +34,7 @@ This project uses foundational speech models from **Gnani.ai** hosted on the Vac
    - Model: `timbre-v3.0`
    - Endpoint: `POST https://api.vachana.ai/api/v1/tts/inference`
    - Features: Expressive neural voice synthesis across Indian languages and Indian-accented English, low latency audio streaming.
-   - Default Voice: `Nalini` (`en-IN`)
+   - Default Voice: `Shivani` (`en-IN`)
    - Header: `X-API-Key-ID: <GNANI_API_KEY>`
 
 ---
@@ -74,7 +74,7 @@ flowchart TD
     end
 
     subgraph TTS [" Text-to-Speech  |  tts/gnani_tts_provider.py"]
-        O --> P[Gnani AI Timbre v3.0\nVoice: Nalini\nPOST api.vachana.ai/api/v1/tts/inference]
+        O --> P[Gnani AI Timbre v3.0\nVoice: Shivani\nPOST api.vachana.ai/api/v1/tts/inference]
         P --> Q[WAV Audio Bytes]
     end
 
@@ -177,7 +177,7 @@ GNANI_STT_LANGUAGE_CODE=en-IN
 # Text-to-Speech (TTS) — Gnani AI Timbre
 # ==============================================================================
 GNANI_TTS_MODEL=timbre-v3.0
-GNANI_TTS_VOICE=Nalini
+GNANI_TTS_VOICE=Shivani
 GNANI_TTS_LANGUAGE=en-IN
 
 # ==============================================================================

@@ -21,25 +21,25 @@ async def run_in_thread(func, *args, **kwargs):
 _conversation_history = []
 
 
-async def generate_answer(question: str) -> str:
-    """
-    Full RAG step:
-      1. Retrieve relevant chunks for `question`
-      2. Compose a prompt with the retrieved context and history
-      3. Call LLM (Groq primary, Gemini fallback) and return the answer text
-    """
-    global _conversation_history
+from app.session_store import get_session, update_history
 
+async def generate_answer(question: str, session_id: str) -> str:
+    """
+    Full RAG step (Optimized):
+      1. Retrieve relevant chunks for `question` using session_id
+      2. Compose a prompt with the retrieved context and session history
+      3. Call LLM directly and return the answer text
+    """
     # Retrieval is blocking (FAISS + local embeddings) — run in a thread
-    docs = await run_in_thread(retrieve, question)
+    docs = await run_in_thread(retrieve, question, session_id)
 
     context = "\n\n".join(d["chunk"] for d in docs)
 
-    # Format recent history (last 3 turns / 6 messages)
     history_text = ""
-    if _conversation_history:
+    session = get_session(session_id)
+    if session and session["history"]:
         history_text = "Recent Conversation History:\n"
-        for role, text in _conversation_history:
+        for role, text in session["history"]:
             history_text += f"{role.capitalize()}: {text}\n"
         history_text += "\n"
 
@@ -64,9 +64,7 @@ Answer:"""
         logger.error(f"Error in generate_answer: {e}")
         answer = "I apologize, but I encountered an error while retrieving the answer. Please check your model API keys."
 
-    # Save to history and truncate to the last 3 turns (6 interactions)
-    _conversation_history.append(("user", question))
-    _conversation_history.append(("assistant", answer))
-    _conversation_history = _conversation_history[-6:]
+    update_history(session_id, "user", question)
+    update_history(session_id, "assistant", answer)
 
     return answer

@@ -1,48 +1,36 @@
 import faiss
-import pickle
 import numpy as np
 
-from app.config import FAISS_INDEX_PATH, CHUNKS_PATH
 from app.embeddings import embed_text
-
-# Lazy-loaded globals — populated on first call to retrieve()
-_index = None
-_chunks = None
+from app.session_store import get_session, _sessions
 
 
-def _load_index():
-    global _index, _chunks
-    if _index is None:
-        _index = faiss.read_index(FAISS_INDEX_PATH)
-        with open(CHUNKS_PATH, "rb") as f:
-            _chunks, _ = pickle.load(f)
+def retrieve(query: str, session_id: str | None = None, k: int = 5):
+    session = get_session(session_id) if session_id else None
 
+    # Fallback to the latest active session if session_id didn't match directly
+    if not session and len(_sessions) > 0:
+        session = next(reversed(_sessions.values()))
 
-def reset_index():
-    """Force the next retrieve() call to reload index from disk."""
-    global _index, _chunks
-    _index = None
-    _chunks = None
+    if not session or "index" not in session or "chunks" not in session:
+        return []
 
+    index = session["index"]
+    chunks = session["chunks"]
 
-def retrieve(query: str, k: int = 5):
-
-    _load_index()
+    if index.ntotal == 0 or len(chunks) == 0:
+        return []
 
     query_vector = np.array([embed_text(query)], dtype="float32")
-
     faiss.normalize_L2(query_vector)
 
-    scores, indices = _index.search(query_vector, k)
-
+    scores, indices = index.search(query_vector, min(k, index.ntotal))
     results = []
 
     for j, i in enumerate(indices[0]):
-
-        if i != -1 and i < len(_chunks):
-
+        if i != -1 and i < len(chunks):
             results.append({
-                "chunk": _chunks[i],
+                "chunk": chunks[i],
                 "score": float(scores[0][j])
             })
 
